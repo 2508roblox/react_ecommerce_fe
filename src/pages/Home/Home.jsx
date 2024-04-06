@@ -4,11 +4,98 @@ import styles from './styles.module.css';
 import URL_PATH from "../../config/UrlPath";
 import { useDispatch } from "react-redux";
 import cartSlice from "../../state/cartSlice";
+import axios from "axios";
+import API_URL from "../../config/Api";
 function Home(){
     const [categories,setCategories] = useState([]);
     const [products,setProducts] = useState([]);
+    const [newProducts, setNewProducts] = useState([]);
+    const [bestsellingProducts, setBestsellingProducts] = useState([]);
+    const [hotProducts, setHotProducts] = useState([]);
     const hasLogin = sessionStorage.getItem("hasLogin");   
+    const getCategories = async () => {
+        try {
+         
+          const response = await axios.get(API_URL.concat("/danh-muc-san-pham"));
+          const data = await response.data;
+          if(response.status === 200){
+           console.log(data)
+         return   setCategories(data)
+          }
+        } catch (error) {
+          // console.log(error.response.data.errors.name[0]);
+         
+         console.log(error)
+    
+        }
+      }
+    const getProducts = async () => {
+        try {
+         
+          const response = await axios.get(API_URL.concat("/san-pham"));
+          const data = await response.data;
+          if(response.status === 200){
+           console.log(data)
+         return   setProducts(data)
+          }
+        } catch (error) {
+          // console.log(error.response.data.errors.name[0]);
+         
+         console.log(error)
+    
+        }
+      }
+      const getNewProducts = async () => {
+        try {
+          const response = await axios.get(API_URL.concat("/san-pham-moi"));
+          const data = await response.data;
+          if (response.status === 200) {
+            setNewProducts(data);
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      
+      const getBestsellingProducts = async () => {
+        try {
+          const response = await axios.get(API_URL.concat("/san-pham-ban-chay"));
+          const data = await response.data;
+          if (response.status === 200) {
+            setBestsellingProducts(data);
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      
+      const getHotProducts = async () => {
+        try {
+          const response = await axios.get(API_URL.concat("/san-pham-hot"));
+          const data = await response.data;
+          if (response.status === 200) {
+            setHotProducts(data);
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      };
     useEffect(()=>{
+        if (!categories.length) {
+            getCategories();
+        }
+        if (!products.length) {
+            getProducts();
+        }
+        if (!newProducts.length) {
+            getNewProducts();
+        }
+        if (!bestsellingProducts.length) {
+            getBestsellingProducts();
+        }
+        if (!hotProducts.length) {
+            getHotProducts();
+        }
         const data = [
             {id:1,name:'Điện thoại'},
             {id:2,name:'Máy tính'},
@@ -31,15 +118,15 @@ function Home(){
             {id:7,name:'iPhone 13',img:'iphone-13.jpg',status:'',price:'2600',price_sale:'',type:'iPhone'},
             {id:8,name:'iPhone 15 pro max',img:'iphone-15-pro-max_1.jpg',status:'',price:'4600',price_sale:'',type:'iPhone'},
         ];    
-        if(categories.length == 0 ) setCategories(data);
-        if(products.length == 0 ) setProducts(dataProducts);
+        
+      
     },[categories,products]);    
     const category = categories.map(category=>{
         return(
             <div key={category.id} className="col-sm-12 col-xl-2 mb-4 " style={{width:262,minHeight:75,maxHeight:80}}>
             <a href="##">
                 <button className="text-start rounded-3 btn btn-light w-100 h-100 " >
-                    <p className="m-1 overflow-hidden">{category.name}</p>
+                    <p className="m-1 overflow-hidden">{category.title}</p>
                 </button>
             </a>
             </div>   
@@ -50,7 +137,7 @@ function Home(){
     const dispatch = useDispatch();
     // const globalstate = useSelector(state=>state.cartState);
     const {add} = cartSlice.actions;
-    const product = products.map(product=>{
+    const product_newProducts = newProducts.map(product=>{
         return(
             <div key={product.id} className="col-xl-3 col-lg-4 col-sm-6">
                 <div className={`product text-start bg-light mb-3 ${styles.borderProduct} ${styles.paddingImageProduct}`}>
@@ -60,7 +147,7 @@ function Home(){
                     {product.status == 'Hết hàng' && <div className="badge text-white bg-secondary">{product.status}</div>}
                     {product.status == 'Bán chạy' && <div className="badge text-white bg-danger">{product.status}</div>}
                     {product.status == '' && <div className="badge">{product.status}</div>}
-                    <Link className="d-block"  to={URL_PATH.concat(`/cua-hang/${product.id}`)}><img className={`img-fluid ${styles.borderImageProduct}`} src={`img/${product.img}`} alt={product.img}/></Link>
+                    <Link className="d-block"  to={`./cua-hang/${product.id}`}><img className={`img-fluid ${styles.borderImageProduct}`} src={`${product.variations[0].image_url}`} alt={product.img}/></Link>
                     <div className="product-overlay">
                         <ul className="mb-0 list-inline">
                         <li className="list-inline-item m-0 p-0"><a className="btn btn-sm btn-outline-dark" href="#!"><i className="far fa-heart"></i></a></li>
@@ -72,7 +159,63 @@ function Home(){
                     </div>
                     <h6 className="text-center"> <Link className="reset-anchor"  to={`/${URL_PATH}/cua-hang/${product.id}`}>{product.type}</Link></h6>
                     <h6 className="text-center"> <Link className="reset-anchor"  to={`/${URL_PATH}/cua-hang/${product.id}`}>{product.name}</Link></h6>
-                    <p className="text-center mb-1 small text-black">${product.price}</p>
+                    <p className="text-center mb-1 small text-black">${product.variations[0].price}</p>
+                </div>
+            </div>  
+        )
+    }
+    );
+    const product_bestsellingProducts = bestsellingProducts.map(product=>{
+        return(
+            <div key={product.id} className="col-xl-3 col-lg-4 col-sm-6">
+                <div className={`product text-start bg-light mb-3 ${styles.borderProduct} ${styles.paddingImageProduct}`}>
+                    <div className="position-relative mb-3">
+                    {product.status == 'Sale' && <div className="badge text-white bg-danger">{product.status}</div>}
+                    {product.status == 'Mới' && <div className="badge text-white bg-danger">{product.status}</div>}
+                    {product.status == 'Hết hàng' && <div className="badge text-white bg-secondary">{product.status}</div>}
+                    {product.status == 'Bán chạy' && <div className="badge text-white bg-danger">{product.status}</div>}
+                    {product.status == '' && <div className="badge">{product.status}</div>}
+                    <Link className="d-block"  to={`./cua-hang/${product.id}`}><img className={`img-fluid ${styles.borderImageProduct}`} src={`${product.variations[0].image_url}`} alt={product.img}/></Link>
+                    <div className="product-overlay">
+                        <ul className="mb-0 list-inline">
+                        <li className="list-inline-item m-0 p-0"><a className="btn btn-sm btn-outline-dark" href="#!"><i className="far fa-heart"></i></a></li>
+                        {!hasLogin ? <li className="list-inline-item m-0 p-0"><a className="btn btn-sm btn-dark" href={"dang-nhap"}><i className="fa fa-cart-plus"></i> Thêm vào giỏ</a></li> : <li className="list-inline-item m-0 p-0">
+                        <button className="btn btn-sm btn-dark" onClick={()=>{dispatch(add({...product,quantity:1}));}}><i className="fa fa-cart-plus"></i> Thêm vào giỏ </button></li>}
+                        <li className="list-inline-item me-0"><a className="btn btn-sm btn-outline-dark" href="#productView" data-bs-toggle="modal"><i className="fas fa-expand"></i></a></li>
+                        </ul>
+                    </div>
+                    </div>
+                    <h6 className="text-center"> <Link className="reset-anchor"  to={`/${URL_PATH}/cua-hang/${product.id}`}>{product.type}</Link></h6>
+                    <h6 className="text-center"> <Link className="reset-anchor"  to={`/${URL_PATH}/cua-hang/${product.id}`}>{product.name}</Link></h6>
+                    <p className="text-center mb-1 small text-black">${product.variations[0].price}</p>
+                </div>
+            </div>  
+        )
+    }
+    );
+    const product_hotProducts = hotProducts.map(product=>{
+        return(
+            <div key={product.id} className="col-xl-3 col-lg-4 col-sm-6">
+                <div className={`product text-start bg-light mb-3 ${styles.borderProduct} ${styles.paddingImageProduct}`}>
+                    <div className="position-relative mb-3">
+                    {product.status == 'Sale' && <div className="badge text-white bg-danger">{product.status}</div>}
+                    {product.status == 'Mới' && <div className="badge text-white bg-danger">{product.status}</div>}
+                    {product.status == 'Hết hàng' && <div className="badge text-white bg-secondary">{product.status}</div>}
+                    {product.status == 'Bán chạy' && <div className="badge text-white bg-danger">{product.status}</div>}
+                    {product.status == '' && <div className="badge">{product.status}</div>}
+                    <Link className="d-block"  to={`./cua-hang/${product.id}`}><img className={`img-fluid ${styles.borderImageProduct}`} src={`${product.variations[0].image_url}`} alt={product.img}/></Link>
+                    <div className="product-overlay">
+                        <ul className="mb-0 list-inline">
+                        <li className="list-inline-item m-0 p-0"><a className="btn btn-sm btn-outline-dark" href="#!"><i className="far fa-heart"></i></a></li>
+                        {!hasLogin ? <li className="list-inline-item m-0 p-0"><a className="btn btn-sm btn-dark" href={"dang-nhap"}><i className="fa fa-cart-plus"></i> Thêm vào giỏ</a></li> : <li className="list-inline-item m-0 p-0">
+                        <button className="btn btn-sm btn-dark" onClick={()=>{dispatch(add({...product,quantity:1}));}}><i className="fa fa-cart-plus"></i> Thêm vào giỏ </button></li>}
+                        <li className="list-inline-item me-0"><a className="btn btn-sm btn-outline-dark" href="#productView" data-bs-toggle="modal"><i className="fas fa-expand"></i></a></li>
+                        </ul>
+                    </div>
+                    </div>
+                    <h6 className="text-center"> <Link className="reset-anchor"  to={`/${URL_PATH}/cua-hang/${product.id}`}>{product.type}</Link></h6>
+                    <h6 className="text-center"> <Link className="reset-anchor"  to={`/${URL_PATH}/cua-hang/${product.id}`}>{product.name}</Link></h6>
+                    <p className="text-center mb-1 small text-black">${product.variations[0].price}</p>
                 </div>
             </div>  
         )
@@ -150,7 +293,7 @@ function Home(){
                     <div className="row">
                         <div className="col-md-4"><a className={`category-item ${styles.heightImageProduct}`} href="shop.html"><img className={`img-fluid ${styles.categoryBorderStyle}`}  src="img/banner_1.jpg" alt="banner_1.jpg" /><strong className="category-item-title rounded-3">MacBook</strong></a>
                         </div>
-                        <div className="col-md-4"><a className="category-item mb-4" href="shop.html"><img className={`img-fluid ${styles.categoryBorderStyle}`} src="img/banner_2.jfif" alt="banner_2.jfif" /><strong className="category-item-title rounded-3">Ipad</strong></a><a className="category-item" href="shop.html"><img className={`img-fluid ${styles.categoryBorderStyle}`} src="img/banner_3.jpg" alt="" /><strong className="category-item-title rounded-3">Apple Watch</strong></a>
+                        <div className="col-md-4"><a className="category-item mb-4" href="shop.html"><img className={`img-fluid ${styles.categoryBorderStyle}`} src="./img/banner_2.jfif" alt="banner_2.jfif" /><strong className="category-item-title rounded-3">Ipad</strong></a><a className="category-item" href="shop.html"><img className={`img-fluid ${styles.categoryBorderStyle}`} src="img/banner_3.jpg" alt="" /><strong className="category-item-title rounded-3">Apple Watch</strong></a>
                         </div>
                         <div className="col-md-4"><a className={`category-item ${styles.heightImageProduct}`} href="shop.html"><img className={`img-fluid ${styles.categoryBorderStyle}`} src="img/banner_4.jpg" alt="banner_4.jpg" /><strong className="category-item-title rounded-3">Iphone</strong></a>
                         </div>
@@ -164,7 +307,7 @@ function Home(){
                     </header>
                     <div className="row">
                         {/*<!-- PRODUCT-->*/}
-                        {product}
+                      {product_newProducts}
                     </div>
                 </section>
                 {/*<!-- HOT PRODUCTS-->*/}
@@ -175,7 +318,7 @@ function Home(){
                     </header>
                     <div className="row">
                         {/*<!-- PRODUCT-->*/}
-                        {product}
+                      {product_hotProducts}
                     </div>
                 </section>
                 {/*<!-- BEST SALE PRODUCTS-->*/}
@@ -186,7 +329,7 @@ function Home(){
                     </header>
                     <div className="row">
                         {/*<!-- PRODUCT-->*/}
-                        {product}
+                      { product_bestsellingProducts}
                     </div>
                 </section>
                 {/*<!-- SERVICES-->*/}

@@ -115,10 +115,17 @@ function Product() {
       );
     }
     );
-
+    const queryParameters = new URLSearchParams(window.location.search)
+    let search =  queryParameters.get('search')
+  
     const product = products.map((product) => {
+      // Kiểm tra xem nếu có search param và tên sản phẩm không chứa search param thì không render sản phẩm đó
+      if (search && !product.name.toLowerCase().includes(search.toLowerCase())) {
+        return null;
+      }
+    
       const price = product.variations.map((variation,index) => {
-        if(index == 0 ){  
+        if(index === 0 ){  
           return(
             <div key={variation.id} className="text-danger text-center">
               <p className="fw-bold m-1">{parseInt(variation.price_sale).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}<span className="text-small">đ</span></p>
@@ -127,13 +134,15 @@ function Product() {
           );
         }
       });
+    
       const image = product.variations.map((variation,index) => {
-        if(index == 0 ){  
+        if(index === 0 ){  
           return(
             <img key={variation.id} className={`img-fluid ${styles.borderImageProduct}`} loading="lazy" src={variation.image_url} data-src={variation.image_url} alt={variation.image_url}/>
           );
         }
       });
+    
       return (
         <div key={product.id} className={`col-lg-4 col-sm-6`}>
           <div className={`product text-start bg-light  mb-3 ${styles.borderProduct} ${styles.paddingImageProduct}`}>
@@ -153,7 +162,9 @@ function Product() {
           </div>
         </div>
       );
-    });  
+    }).filter(product => product !== null); // Loại bỏ các sản phẩm không phù hợp với điều kiện
+    
+    
     return (
         <section >
           <div className="container">   
@@ -177,13 +188,9 @@ function Product() {
             </section>
             {/*<!-- CATEGORIES ALL SECTION-->*/}
             <section className="pt-4">
-              <header className="text-start">
-                  <h2 className="h5 text-uppercase mb-4">Danh sách danh mục</h2>
-              </header>
+      
               {loading && <div className="col-lg-12 col-sm-12"><Loading className={'d-flex justify-content-center'} width={50}  /></div> }  
-              <div className="row gy-2">
-                  {category}
-              </div>
+          
             </section>
             <section className="pt-4">
               <header className="text-start">

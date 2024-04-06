@@ -3,125 +3,113 @@ import { useParams } from "react-router-dom";
 import styles from "./styles.module.css";
 import { useDispatch } from "react-redux";
 import cartSlice from "../../state/cartSlice";
+import API_URL from "../../config/Api";
+import axios from "axios";
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2'
 
 const DetailProduct = () => {
-    const slug = useParams()['slug'];
+    const { id } = useParams();
+    const navigate = useNavigate()
+    //user data 
+  const userInfos = sessionStorage.getItem("userInfo");
+
+    const auth_user =     JSON.parse(userInfos);
     // const type = useParams()['type'];
     const path = 'https://vietbh.github.io/lazi-store/';
     const [products,setProducts] = useState([]);
+    const [productDetail,setProductDetail] = useState([]);
+
     const [color,setColor] = useState('');
     const dispatch = useDispatch();
     const {add} = cartSlice.actions
+    // detail
+    const [selectedColor, setSelectedColor] = useState('');
+    const [minPrice, setMinPrice] = useState(Number.MAX_VALUE);
+    const [maxPrice, setMaxPrice] = useState(0);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    // add to cart
+    const [quantity, setQuantity] = useState(0);
+    
+    const handleColorClick = (colorType, variant ) => {
+        setSelectedColor(colorType);
+        setSelectedProduct(variant)
+        setQuantity(1)
+    };
+    const getDetail = async (id) => {
+        try {
+          const response = await axios.get(`${API_URL}/san-pham/${id}`);
+          const data = response.data;
+          setProductDetail(data)
+        } catch (error) {
+          console.log(error);
+          return null;
+        }
+      };
+
+
+      const addToCart = async () => {
+        try {
+            if (!selectedProduct) {
+                // Nếu không có sản phẩm nào được chọn
+                console.log('Please select a product variant.');
+                return;
+            }
+            const price = selectedProduct.price_sale !== "0.00" ? selectedProduct.price_sale : selectedProduct.price;
+            // Tạo payload để gửi lên server
+            const payload = {
+                quantity: parseInt(quantity),
+                product_id: selectedProduct.product_id,
+                variant_id: selectedProduct.id,
+                price: parseFloat(price), // Chuyển đổi sang kiểu số thực
+                user_id: auth_user[0].id // Sử dụng auth_user từ context hoặc props
+            };
+            console.log(payload)
+            // Gửi request POST lên server
+            const response = await axios.post(`${API_URL}/add-to-cart`, payload);
+    
+            // Kiểm tra kết quả từ server
+            if (response.status === 200) {
+                console.log('Product added to cart successfully!');
+                // Reset quantity sau khi thêm vào giỏ hàng
+                setQuantity(0);
+             await   Swal.fire({
+                    title: "Good job!",
+                    text: "You clicked the button!",
+                    icon: "success"
+                  });
+                navigate('/lazi-store/gio-hang.html');
+            } else {
+                console.log('Failed to add product to cart.');
+            }
+        } catch (error) {
+            console.error('Error adding product to cart:', error);
+        }
+    };
+    
+
+      useEffect(() => {
+        // Tính toán giá thấp nhất và cao nhất từ các variant
+        let min = Number.MAX_VALUE;
+        let max = 0;
+        productDetail && productDetail.variations && productDetail.variations.forEach(variation => {
+            if (parseInt(variation.price) < min) min = parseInt(variation.price);
+            if (parseInt(variation.price) > max) max = parseInt(variation.price);
+        });
+        setMinPrice(min);
+        setMaxPrice(max);
+    }, [productDetail]);
+    
     useEffect(()=>{
+        if (!productDetail.length) {
+            getDetail(id);
+        }
         const cachedProducts = JSON.parse(sessionStorage.getItem('products'));
         if(cachedProducts){
             setProducts(cachedProducts);
         }
     },[]);   
     
-    const product = products.map((product) => {
-        if(product.slug == slug)
-        return(
-            <div key={product.id} className="col-lg-5" id='san-pham'>
-                <h1 className="mb-4">{product.name}</h1>
-                <h6 className="text-secondary ">Chọn màu để xem giá</h6>
-                <div className="d-flex justify-content-start mb-4 mt-1">
-                    {product.variations.map((variation,index) => {
-                        if(index == 0 && color == '') setColor(variation.color_type);
-                        if(variation.color_type == color){
-                            return(
-                                <div key={variation.id} className="me-3">
-                                    <div className="card col-lg-12 col-sm-12 border border-4 border-danger rounded-3">
-                                        <div className="card-body col-lg-12 px-2 py-1 border border-danger rounded-3">
-                                            <button className={`btn-hover-none p-0 text-start ${styles.buttonColor}`} type="button" >
-                                                <p className="fw-bolder text-secondary p-0 m-0">{variation.color_type}</p>
-                                                <p className="fw-normal text-secondary p-0 m-0"> {parseInt(variation.price_sale).toFixed(1).replace(/\d(?=(\d{3})+\.)/g, '$&,')}<span className="text-small">đ</span></p>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        }else{
-                            return(
-                                <div key={variation.id} className="me-3">
-                                    <div className="card col-lg-12 col-sm-12 border border-4 border-secondary rounded-3">
-                                        <div className="card-body col-lg-12 px-2 py-1 border border-secondary rounded-3">
-                                            <button className={`btn-hover-none p-0 text-start ${styles.buttonColor}`} onClick={()=>setColor(variation.color_type)}>
-                                                <p className="fw-bolder text-secondary p-0 m-0">{variation.color_type}</p>
-                                                <p className="fw-normal text-secondary p-0 m-0"> {parseInt(variation.price_sale).toFixed(1).replace(/\d(?=(\d{3})+\.)/g, '$&,')}<span className="text-small">đ</span></p>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        }
-                    })}
-                </div>
-                {/**
-                <div className="text-sm mb-4" dangerouslySetInnerHTML={{ __html: product.description }} />
-                 */}
-                <div className="row align-items-stretch mb-4">
-                    <div className="col-sm-5 col-lg-5 pr-sm-0 mb-4">
-                        <div className="border d-flex align-items-center justify-content-between py-1 px-3 bg-white border-white"><span className="small text-uppercase text-gray mr-4 no-select">Số lượng</span>
-                            <div className="quantity">
-                                <button className="dec-btn p-0"><i className="fas fa-caret-left"></i></button>
-                                <input className="form-control border-0 shadow-0 p-0" type="text" value="1" onChange={()=>{}}/>
-                                <button className="inc-btn p-0"><i className="fas fa-caret-right"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                    {product.variations.map((variation,index) => {
-                        if(index == 0 && color == '') setColor(variation.color_type);
-                        if(variation.color_type == color){
-                            return (
-                                <div key={variation.id} className="row">
-                                    <div className="col-sm-7 col-lg-9 pl-sm-0 mb-4 p-0"><button className="btn btn-danger btn-block w-100 py-3 fs-5 fw-bold rounded-3 text-uppercase" onClick={()=>{dispatch(add({...variation,quantity:1}));}}>Mua ngay</button></div>
-                                    <div className="col-sm-5 col-lg-3 pl-sm-0 mb-4 ">
-                                        <button className="btn btn-outline-danger btn-block w-100 p-1 fs-6 rounded-3 "  onClick={()=>{dispatch(add({...variation,quantity:1}));}}>
-                                            <svg width="37px" height="37px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ff0000">
-                                                <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                                                <g id="SVGRepo_tracerCarrier" strokeLinecap="round" strokeLinejoin="round"></g>
-                                                <g id="SVGRepo_iconCarrier">
-                                                    <path d="M21 5L19 12H7.37671M20 16H8L6 3H3M11.5 7L13.5 9M13.5 9L15.5 7M13.5 9V3M9 20C9 20.5523 8.55228 21 8 21C7.44772 21 7 20.5523 7 20C7 19.4477 7.44772 19 8 19C8.55228 19 9 19.4477 9 20ZM20 20C20 20.5523 19.5523 21 19 21C18.4477 21 18 20.5523 18 20C18 19.4477 18.4477 19 19 19C19.5523 19 20 19.4477 20 20Z" stroke="#ff0000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path> 
-                                                </g>
-                                            </svg>                                          
-                                            <p className="mb-0 pb-0" style={{fontSize:'10px'}}>Thêm vào giỏ</p>
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        }
-                    })}
-                    <div className="row pe-4 mb-4">
-                        <div className="card col-lg-12">
-                            <div className="card-body">
-                                <h5 className="card-title">Special title treatment</h5>
-                                <p className="card-text">With supporting text below as a natural lead-in to additional content.</p>
-                                <a href="#" className="btn btn-primary">Go somewhere</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="row pe-4 mb-4">
-                        <div className="card col-lg-12">
-                            <div className="card-body">
-                                <h5 className="card-title">Special title treatment</h5>
-                                <p className="card-text">With supporting text below as a natural lead-in to additional content.</p>
-                                <a href="#" className="btn btn-primary">Go somewhere</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="row pe-4 mb-4">
-                        <div className="card col-lg-12">
-                            <div className="card-body">
-                                <h5 className="card-title">Special title treatment</h5>
-                                <p className="card-text">With supporting text below as a natural lead-in to additional content.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    });
 
     return (
         <section className="py-5">
@@ -130,30 +118,83 @@ const DetailProduct = () => {
                     <div className="col-lg-7">
                     {/* <!-- PRODUCT SLIDER--> */}
                         <div className="row m-sm-0">
-                            <div className="col-sm-2 p-sm-0 order-2 order-sm-1 mt-2 mt-sm-0 px-xl-2">
-                                <div className="swiper product-slider-thumbs">
-                                    <div className="swiper-wrapper d-inline">
-                                        <div className="swiper-slide h-auto swiper-thumb-item mb-3"><img className="w-100" src={`${path}img/product-detail-1.jpg`} alt="..." /></div>
-                                        <div className="swiper-slide h-auto swiper-thumb-item mb-3"><img className="w-100" src={`${path}img/product-detail-2.jpg`} alt="..." /></div>
-                                        <div className="swiper-slide h-auto swiper-thumb-item mb-3"><img className="w-100" src={`${path}img/product-detail-3.jpg`} alt="..." /></div>
-                                        <div className="swiper-slide h-auto swiper-thumb-item mb-3"><img className="w-100" src={`${path}img/product-detail-4.jpg`} alt="..." /></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-sm-10 order-1 order-sm-2">
-                                <div className="swiper product-slider">
-                                    <div className="swiper-wrapper">
-                                    <div className="swiper-slide h-auto"><a className="glightbox product-view" href={`${path}img/product-detail-1.jpg`} data-gallery="gallery2" data-glightbox="Product item 1"><img className="img-fluid" src={`${path}img/product-detail-1.jpg`} alt="..." /></a></div>
-                                    <div className="swiper-slide h-auto"><a className="glightbox product-view" href={`${path}img/product-detail-2.jpg`} data-gallery="gallery2" data-glightbox="Product item 2"><img className="img-fluid" src={`${path}img/product-detail-2.jpg`} alt="..." /></a></div>
-                                    <div className="swiper-slide h-auto"><a className="glightbox product-view" href={`${path}img/product-detail-3.jpg`} data-gallery="gallery2" data-glightbox="Product item 3"><img className="img-fluid" src={`${path}img/product-detail-3.jpg`} alt="..." /></a></div>
-                                    <div className="swiper-slide h-auto"><a className="glightbox product-view" href={`${path}img/product-detail-4.jpg`} data-gallery="gallery2" data-glightbox="Product item 4"><img className="img-fluid" src={`${path}img/product-detail-4.jpg`} alt="..." /></a></div>
-                                </div>
-                                </div>
-                            </div>
+                        <div className="col-sm-2 p-sm-0 order-2 order-sm-1 mt-2 mt-sm-0 px-xl-2">
+    <div className="swiper product-slider-thumbs">
+        <div className="swiper-wrapper d-inline">
+            {productDetail && productDetail.variations && productDetail.variations.map((variation, index) => (
+                <div key={index} className="swiper-slide h-auto swiper-thumb-item mb-3">
+                    <img className="w-100" src={variation.image_url} alt={`Product variation ${index + 1}`} />
+                </div>
+            ))}
+        </div>
+    </div>
+</div>
+<div className="col-sm-10 order-1 order-sm-2">
+    <div className="swiper product-slider">
+        <div className="swiper-wrapper">
+            {productDetail && productDetail.variations && productDetail.variations.map((variation, index) => (
+                <div key={index} className="swiper-slide h-auto">
+                    <a className="glightbox product-view" href={variation.image_url} data-gallery="gallery2" data-glightbox={`Product item ${index + 1}`}>
+                        <img className="img-fluid" src={variation.image_url} alt={`Product variation ${index + 1}`} />
+                    </a>
+                </div>
+            ))}
+        </div>
+    </div>
+</div>
+
                         </div>
                     </div>
-                    {/* <!-- PRODUCT DETAILS--> */}
-                    {product}
+                    <div className="col-lg-5">
+    {/* <!-- PRODUCT DETAILS--> */}
+{productDetail && productDetail.category?.name && (
+    <div className="product-detail">
+        <h1 className="text-2xl font-bold mb-4">{productDetail.name}</h1>
+        <p className="mb-2"><strong>Category:</strong> {productDetail.category.name}</p>
+        <p className="mb-4"><strong>Description:</strong> {productDetail.description}</p>
+        <h3 className="text-lg font-semibold mb-2">Variations:</h3>
+        <div className="variation-buttons mb-4">
+            {productDetail.variations.map(variation => (
+                <button 
+                    key={variation.id} 
+                    onClick={() => handleColorClick(variation.color_type, variation)}
+                    className={`color-button ${selectedColor === variation.color_type ? 'selected' : ''} mr-2 mb-2 py-1 px-4 border border-gray-300 rounded-full hover:bg-gray-200 focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200`}
+                >
+                    {variation.color_type}
+                </button>
+            ))}
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Price:</h3>
+        <div className="price">
+            {selectedColor ? (
+                `$${productDetail.variations.find(variation => variation.color_type === selectedColor)?.price}`
+            ) : (
+                `From $${minPrice} - $${maxPrice}`
+            )}
+        </div>
+        {/* Add to Cart button and Quantity input */}
+        <div className="flex items-center mt-4">
+        <input 
+    type="number" 
+    className="w-50 mr-4 border border-gray-300 rounded-md p-1 focus:outline-none focus:border-blue-500"
+    value={quantity} 
+    min={1}
+    onChange={(e) => setQuantity(e.target.value)} 
+    max={selectedProduct ? selectedProduct.quantity : 0} // Set max quantity based on selected product
+/>
+<button 
+    className="bg-blue-500 text-black px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none"
+    onClick={addToCart}
+>
+    Add to Cart
+</button>
+
+        </div>
+    </div>
+)}
+
+                    </div>
+              
                 </div>
                 {/* <!-- DETAILS TABS--> */}
                 <div className="row mb-5">
